@@ -16,6 +16,7 @@ PodTech's Tabichan API SDK for JavaScript/Node.js - Your AI-powered tourism assi
 - 🔒 Secure API key authentication
 - 📦 Dual CommonJS/ESM support
 - 🎯 Full TypeScript support
+- 🔌 Real-time WebSocket support for interactive conversations
 
 ## Installation
 
@@ -78,6 +79,61 @@ const taskId = await client.startChat(
 const result = await client.waitForChat(taskId);
 ```
 
+### WebSocket Usage (Real-time Interactive Chat)
+
+```javascript
+const { TabichanWebSocket } = require('tabichan');
+
+const wsClient = new TabichanWebSocket('user123', 'your-api-key');
+
+// Set up event handlers
+wsClient.on('connected', () => {
+  console.log('Connected to Tabichan WebSocket');
+});
+
+wsClient.on('question', (data) => {
+  console.log('Question:', data.question);
+  // Answer the question
+  wsClient.sendResponse('I prefer cultural attractions');
+});
+
+wsClient.on('result', (data) => {
+  console.log('Result:', data.result);
+});
+
+wsClient.on('complete', () => {
+  console.log('Chat completed');
+});
+
+wsClient.on('error', (error) => {
+  console.error('Error:', error);
+});
+
+// Connect and start chat
+await wsClient.connect();
+await wsClient.startChat('Show me the best temples in Kyoto');
+```
+
+### TypeScript WebSocket Usage
+
+```typescript
+import { TabichanWebSocket, type WebSocketMessage } from 'tabichan';
+
+const wsClient = new TabichanWebSocket('user123');
+
+wsClient.on('question', (data: { question_id: string; question: string }) => {
+  console.log('Question received:', data.question);
+  wsClient.sendResponse('My preference is cultural sites');
+});
+
+wsClient.on('result', (data: { result: any }) => {
+  console.log('Final result:', data.result);
+});
+
+await wsClient.connect();
+await wsClient.startChat('Plan a 3-day trip to Tokyo', [], { budget: 'mid-range' });
+```
+
 ### Advanced Usage
 
 ```javascript
@@ -133,6 +189,39 @@ Wait for a chat task to complete and return the result.
 #### `getImage(id: string, country?: 'japan' | 'france'): Promise<string>`
 
 Get a base64-encoded image by ID.
+
+### TabichanWebSocket
+
+#### `constructor(userId: string, apiKey?: string)`
+
+Initialize the WebSocket client with a user ID and API key. If API key is not provided, uses `TABICHAN_API_KEY` environment variable.
+
+#### `connect(): Promise<void>`
+
+Connect to the Tabichan WebSocket server.
+
+#### `disconnect(): void`
+
+Disconnect from the WebSocket server.
+
+#### `startChat(query: string, history?: ChatMessage[], preferences?: object): Promise<void>`
+
+Start an interactive chat session.
+
+#### `sendResponse(response: string): Promise<void>`
+
+Send a response to an active question.
+
+#### Event Handlers
+
+- `on('connected', () => void)` - Fired when connected to the server
+- `on('disconnected', (info) => void)` - Fired when disconnected from the server  
+- `on('question', (data) => void)` - Fired when the agent asks a question
+- `on('result', (data) => void)` - Fired when receiving chat results
+- `on('complete', () => void)` - Fired when the chat session is complete
+- `on('error', (error) => void)` - Fired on connection or general errors
+- `on('authError', (error) => void)` - Fired on authentication errors
+- `on('chatError', (error) => void)` - Fired on chat-specific errors
 
 ## Development
 
