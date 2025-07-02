@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 class TabichanClient {
   constructor(apiKey) {
@@ -192,4 +192,4 @@ class TabichanClient {
   }
 }
 
-module.exports = TabichanClient;
+export default TabichanClient;

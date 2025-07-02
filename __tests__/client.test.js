@@ -1,14 +1,11 @@
 const TabichanClient = require('../src/client');
 
-// Mock the http and https modules
-jest.mock('https');
-jest.mock('http');
-
-const https = require('https');
-const http = require('http');
+// Mock axios
+jest.mock('axios');
+const axios = require('axios');
 
 describe('TabichanClient', () => {
-  let mockRequest;
+  let mockAxiosInstance;
   let originalEnv;
 
   beforeEach(() => {
@@ -18,16 +15,17 @@ describe('TabichanClient', () => {
     // Create a clean environment for each test
     process.env = { ...originalEnv };
     
-    // Mock request object
-    mockRequest = {
-      on: jest.fn(),
-      write: jest.fn(),
-      end: jest.fn(),
-      destroy: jest.fn()
+    // Create a mock function for the axios instance
+    mockAxiosInstance = jest.fn();
+    
+    // Add the defaults property
+    mockAxiosInstance.defaults = {
+      headers: {},
+      baseURL: ''
     };
     
-    https.request = jest.fn(() => mockRequest);
-    http.request = jest.fn(() => mockRequest);
+    // Mock axios.create to return our mock instance
+    axios.create = jest.fn(() => mockAxiosInstance);
   });
 
   afterEach(() => {
@@ -44,7 +42,14 @@ describe('TabichanClient', () => {
       expect(client.apiKey).toBe(apiKey);
       expect(client.baseURL).toBe('https://tourism-api.podtech-ai.com/v1');
       expect(client.alternativeBaseURL).toBe('https://tabichan.podtech-ai.com/v1');
-      expect(client.defaultHeaders['x-api-key']).toBe(apiKey);
+      expect(axios.create).toHaveBeenCalledWith({
+        baseURL: 'https://tourism-api.podtech-ai.com/v1',
+        headers: {
+          'User-Agent': 'tabichan-js-sdk/0.1.0',
+          'x-api-key': apiKey
+        },
+        timeout: 30000
+      });
     });
 
     test('should initialize with API key from environment variable', () => {
@@ -52,7 +57,14 @@ describe('TabichanClient', () => {
       const client = new TabichanClient();
       
       expect(client.apiKey).toBe('env-api-key');
-      expect(client.defaultHeaders['x-api-key']).toBe('env-api-key');
+      expect(axios.create).toHaveBeenCalledWith({
+        baseURL: 'https://tourism-api.podtech-ai.com/v1',
+        headers: {
+          'User-Agent': 'tabichan-js-sdk/0.1.0',
+          'x-api-key': 'env-api-key'
+        },
+        timeout: 30000
+      });
     });
 
     test('should throw error when API key is missing', () => {
@@ -66,60 +78,49 @@ describe('TabichanClient', () => {
 
   describe('API Methods', () => {
     let client;
-    let mockResponse;
 
     beforeEach(() => {
       process.env.TABICHAN_API_KEY = 'test-key';
       client = new TabichanClient();
-      
-      mockResponse = {
-        statusCode: 200,
-        statusMessage: 'OK',
-        headers: { 'content-type': 'application/json' },
-        on: jest.fn()
-      };
     });
 
-    const mockSuccessfulRequest = (responseData) => {
-      https.request.mockImplementation((options, callback) => {
-        setTimeout(() => {
-          callback(mockResponse);
-          
-          // Simulate data and end events
-          const dataCallback = mockResponse.on.mock.calls.find(call => call[0] === 'data')[1];
-          const endCallback = mockResponse.on.mock.calls.find(call => call[0] === 'end')[1];
-          
-          dataCallback(JSON.stringify(responseData));
-          endCallback();
-        }, 0);
-        
-        return mockRequest;
-      });
+    const mockSuccessfulResponse = (responseData) => {
+      const mockResponse = {
+        data: responseData,
+        status: 200,
+        statusText: 'OK',
+        headers: { 'content-type': 'application/json' }
+      };
+      
+      mockAxiosInstance.mockResolvedValue(mockResponse);
+      return mockResponse;
     };
 
     test('should start chat successfully', async () => {
       const responseData = { task_id: 'test-task-id' };
-      mockSuccessfulRequest(responseData);
+      mockSuccessfulResponse(responseData);
 
       const taskId = await client.startChat('Test query', 'user123');
 
       expect(taskId).toBe('test-task-id');
-      expect(https.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          hostname: 'tourism-api.podtech-ai.com',
-          path: '/chat',
-          method: 'POST',
-          headers: expect.objectContaining({
-            'x-api-key': 'test-key'
-          })
-        }),
-        expect.any(Function)
-      );
+      expect(mockAxiosInstance).toHaveBeenCalledWith({
+        url: '/chat',
+        method: 'POST',
+        timeout: 3000,
+        headers: {},
+        data: {
+          user_query: 'Test query',
+          user_id: 'user123',
+          country: 'japan',
+          history: [],
+          additional_inputs: {}
+        }
+      });
     });
 
     test('should start chat with all parameters', async () => {
       const responseData = { task_id: 'france-task-id' };
-      mockSuccessfulRequest(responseData);
+      mockSuccessfulResponse(responseData);
 
       const history = [{ role: 'user', content: 'Previous message' }];
       const additionalInputs = { preference: 'luxury' };
@@ -133,15 +134,19 @@ describe('TabichanClient', () => {
       );
 
       expect(taskId).toBe('france-task-id');
-      expect(mockRequest.write).toHaveBeenCalledWith(
-        JSON.stringify({
+      expect(mockAxiosInstance).toHaveBeenCalledWith({
+        url: '/chat',
+        method: 'POST',
+        timeout: 3000,
+        headers: {},
+        data: {
           user_query: 'France query',
           user_id: 'user456',
           country: 'france',
           history: history,
           additional_inputs: additionalInputs
-        })
-      );
+        }
+      });
     });
 
     test('should poll chat successfully', async () => {
@@ -149,51 +154,48 @@ describe('TabichanClient', () => {
         status: 'completed', 
         result: { answer: 'Test response' } 
       };
-      mockSuccessfulRequest(responseData);
+      mockSuccessfulResponse(responseData);
 
       const result = await client.pollChat('test-task');
 
       expect(result.status).toBe('completed');
       expect(result.result.answer).toBe('Test response');
-      expect(https.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          path: '/chat/poll?task_id=test-task',
-          method: 'GET'
-        }),
-        expect.any(Function)
-      );
+      expect(mockAxiosInstance).toHaveBeenCalledWith({
+        url: '/chat/poll?task_id=test-task',
+        method: 'GET',
+        timeout: 5000,
+        headers: {}
+      });
     });
 
     test('should get image successfully', async () => {
       const responseData = { base64: 'test-base64-data' };
-      mockSuccessfulRequest(responseData);
+      mockSuccessfulResponse(responseData);
 
       const imageData = await client.getImage('test-id');
 
       expect(imageData).toBe('test-base64-data');
-      expect(https.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          path: '/image?id=test-id&country=japan',
-          method: 'GET'
-        }),
-        expect.any(Function)
-      );
+      expect(mockAxiosInstance).toHaveBeenCalledWith({
+        url: '/image?id=test-id&country=japan',
+        method: 'GET',
+        timeout: 30000,
+        headers: {}
+      });
     });
 
     test('should get image with france country', async () => {
       const responseData = { base64: 'france-image-data' };
-      mockSuccessfulRequest(responseData);
+      mockSuccessfulResponse(responseData);
 
       const imageData = await client.getImage('fr-image', 'france');
 
       expect(imageData).toBe('france-image-data');
-      expect(https.request).toHaveBeenCalledWith(
-        expect.objectContaining({
-          path: '/image?id=fr-image&country=france',
-          method: 'GET'
-        }),
-        expect.any(Function)
-      );
+      expect(mockAxiosInstance).toHaveBeenCalledWith({
+        url: '/image?id=fr-image&country=france',
+        method: 'GET',
+        timeout: 30000,
+        headers: {}
+      });
     });
   });
 
@@ -333,54 +335,34 @@ describe('TabichanClient', () => {
     });
 
     test('should handle HTTP errors', async () => {
-      const mockResponse = {
-        statusCode: 404,
-        statusMessage: 'Not Found',
-        headers: {},
-        on: jest.fn()
+      const axiosError = new Error('Request failed with status code 404');
+      axiosError.response = {
+        data: { error: 'Not found' },
+        status: 404,
+        statusText: 'Not Found',
+        headers: {}
       };
 
-      https.request.mockImplementation((options, callback) => {
-        setTimeout(() => {
-          callback(mockResponse);
-          
-          const dataCallback = mockResponse.on.mock.calls.find(call => call[0] === 'data')[1];
-          const endCallback = mockResponse.on.mock.calls.find(call => call[0] === 'end')[1];
-          
-          dataCallback('{"error": "Not found"}');
-          endCallback();
-        }, 0);
-        
-        return mockRequest;
-      });
+      mockAxiosInstance.mockRejectedValue(axiosError);
 
       await expect(client.startChat('Test', 'user')).rejects.toThrow('HTTP 404: Not Found');
     });
 
-    test('should handle request errors', async () => {
-      https.request.mockImplementation(() => {
-        setTimeout(() => {
-          const errorCallback = mockRequest.on.mock.calls.find(call => call[0] === 'error')[1];
-          errorCallback(new Error('Connection failed'));
-        }, 0);
-        
-        return mockRequest;
-      });
+    test('should handle request errors (no response)', async () => {
+      const axiosError = new Error('Network Error');
+      axiosError.request = {};
 
-      await expect(client.startChat('Test', 'user')).rejects.toThrow('Request failed: Connection failed');
+      mockAxiosInstance.mockRejectedValue(axiosError);
+
+      await expect(client.startChat('Test', 'user')).rejects.toThrow('Request failed: No response received');
     });
 
-    test('should handle timeout errors', async () => {
-      https.request.mockImplementation(() => {
-        setTimeout(() => {
-          const timeoutCallback = mockRequest.on.mock.calls.find(call => call[0] === 'timeout')[1];
-          timeoutCallback();
-        }, 0);
-        
-        return mockRequest;
-      });
+    test('should handle other errors', async () => {
+      const axiosError = new Error('Something went wrong');
 
-      await expect(client.startChat('Test', 'user')).rejects.toThrow('Request timeout');
+      mockAxiosInstance.mockRejectedValue(axiosError);
+
+      await expect(client.startChat('Test', 'user')).rejects.toThrow('Request failed: Something went wrong');
     });
   });
 
@@ -390,7 +372,7 @@ describe('TabichanClient', () => {
       client.setApiKey('new-key');
       
       expect(client.apiKey).toBe('new-key');
-      expect(client.defaultHeaders['x-api-key']).toBe('new-key');
+      expect(client.axios.defaults.headers['x-api-key']).toBe('new-key');
     });
 
     test('should update base URL', () => {
@@ -398,6 +380,7 @@ describe('TabichanClient', () => {
       client.setBaseURL('https://new-api.example.com');
       
       expect(client.baseURL).toBe('https://new-api.example.com');
+      expect(client.axios.defaults.baseURL).toBe('https://new-api.example.com');
     });
   });
 });

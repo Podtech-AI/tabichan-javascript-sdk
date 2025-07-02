@@ -12,12 +12,12 @@
   },
   "license": "MIT",
   "author": "Maxence Leguéry",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "exports": {
     ".": {
-      "import": "./esm/index.js",
+      "import": "./src/index.mjs",
       "require": "./index.js",
       "types": "./index.d.ts"
     }
@@ -39,6 +39,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "axios": "^1.7.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {
