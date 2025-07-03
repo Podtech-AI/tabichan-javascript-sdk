@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { TabichanClient } from 'tabichan';
 
 const client = new TabichanClient();
