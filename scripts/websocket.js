@@ -10,6 +10,7 @@ async function testWebSocket() {
 
   // Create WebSocket client
   const client = new TabichanWebSocket(USER_ID);
+  client.setBaseURL("ws://localhost:8085/v1")
 
   // Set up event listeners
   client.on('connected', () => {

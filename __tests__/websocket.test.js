@@ -92,7 +92,7 @@ describe('TabichanWebSocket', () => {
       await connectPromise;
       
       expect(client.isConnected).toBe(true);
-      expect(WebSocket).toHaveBeenCalledWith('wss://tabichan.podtech-ai.com/v1/ws/chat/user123?api_key=test-api-key');
+      expect(WebSocket).toHaveBeenCalledWith('wss://tabichan.podtech-ai.com/v1/ws/chat/user123', {"headers": {"X-API-Key": "test-api-key"}});
     });
 
     test('should handle connection error', async () => {

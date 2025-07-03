@@ -32,10 +32,14 @@ class TabichanWebSocket extends EventEmitter {
     }
 
     this.connectionPromise = new Promise((resolve, reject) => {
-      const wsUrl = `${this.baseURL}/ws/chat/${this.userId}?api_key=${this.apiKey}`;
+      const wsUrl = `${this.baseURL}/ws/chat/${this.userId}`;
       
       try {
-        this.ws = new WebSocket(wsUrl);
+        this.ws = new WebSocket(wsUrl, {
+          headers: {
+            'X-API-Key': this.apiKey
+          }
+        });
       } catch (error) {
         this.connectionPromise = null;
         reject(error);
