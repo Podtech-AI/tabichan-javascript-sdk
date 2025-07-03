@@ -1,7 +1,7 @@
 # Tabichan JavaScript SDK
 
 [![Tests](https://github.com/Podtech-AI/tabichan-javascript-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/Podtech-AI/tabichan-javascript-sdk/actions/workflows/test.yml)
-[![npm version](https://badge.fury.io/js/tabichan.svg)](https://badge.fury.io/js/tabichan)
+[![NPM version](https://img.shields.io/npm/v/@podtechai/tabichan/latest.svg)](https://www.npmjs.com/package/@podtechai/tabichan)
 [![Node.js](https://img.shields.io/badge/node.js-14+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
