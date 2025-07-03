@@ -1,5 +1,5 @@
 {
-  "name": "tabichan",
+  "name": "@podtechai/tabichan",
   "version": "0.1.0",
   "description": "JavaScript SDK for Tabichan REST API",
   "homepage": "https://github.com/Podtech-AI/tabichan-javascript-sdk#readme",
